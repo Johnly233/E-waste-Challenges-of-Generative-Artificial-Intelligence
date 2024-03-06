@@ -3,34 +3,36 @@ import xlrd
 import pandas as pd
 from itertools import starmap as smap
 
-#Parameter initialization
-random_batch = 1000
-l_range = 12  #Lifespan of server/season
-day = 14 #GAI model training time/day
-GPU_per_server = 8
-n_model = 5  #number of GAI models
-
+#Data initialization
 S1_total = pd.DataFrame()
 S2_total = pd.DataFrame()
 C1_total = pd.DataFrame()
 C2_total = pd.DataFrame()
 
-#Import excel data
+#Import excel data, parameter initialization
 input_path = r'Demo data.xls'
 output_path = r'Result.xlsx'
+
 excel = xlrd.open_workbook(input_path)
-sheet = excel.sheet_by_index(0)
-Nt_para = sheet.col_values(colx=0)
+compute_data = excel.sheet_by_index(1)
+Nt_para = compute_data.col_values(colx=0)
 Nt_para.pop(0)
-Nt_traindata = sheet.col_values(colx=1)
+Nt_traindata = compute_data.col_values(colx=1)
 Nt_traindata.pop(0)
-Pt_theo = sheet.col_values(colx=2)
+Pt_theo = compute_data.col_values(colx=2)
 Pt_theo.pop(0)
-Pi_theo = sheet.col_values(colx=3)
+Pi_theo = compute_data.col_values(colx=3)
 Pi_theo.pop(0)
-Ni_user = sheet.col_values(colx=4)
+Ni_user = compute_data.col_values(colx=4)
 Ni_user.pop(0)
 
+config_data = excel.sheet_by_index(0)
+random_batch = int(config_data.cell(0,1).value)
+l_range = int(config_data.cell(1,1).value)
+day = int(config_data.cell(2,1).value)
+GPU_per_server = int(config_data.cell(3,1).value)
+n_model = int(config_data.cell(4,1).value)
+upgrade_strategy = int(config_data.cell(5,1).value)
 
 T = len(Pt_theo)
 
@@ -113,8 +115,12 @@ for r in range(random_batch):
         C1_total[r] = C1
         C2_total[r] = C2
 
-S_final = S1_total  #This is used to choose Stepwise Upgrade Strategy result or Continuous Upgrading Strategy result
-
+#Choose Stepwise Upgrade Strategy result or Continuous Upgrading Strategy result
+if upgrade_strategy == 1:
+	S_final = S1_total
+elif upgrade_strategy == 2:
+	S_final = S2_total
+	
 Exp = pd.DataFrame()
 
 #Calculate mean value and standard deviation
