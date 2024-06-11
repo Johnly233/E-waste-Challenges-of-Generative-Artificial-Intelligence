@@ -3,28 +3,32 @@ import xlrd
 import pandas as pd
 from itertools import starmap as smap
 
-#Data initialization
 S1_total = pd.DataFrame()
 S2_total = pd.DataFrame()
 C1_total = pd.DataFrame()
 C2_total = pd.DataFrame()
 
-#Import excel data, parameter initialization
+#Import excel data
 input_path = r'Demo data.xls'
 output_path = r'Result.xlsx'
-
 excel = xlrd.open_workbook(input_path)
-compute_data = excel.sheet_by_index(1)
-Nt_para = compute_data.col_values(colx=0)
+sheet = excel.sheet_by_index(1)
+Nt_para = sheet.col_values(colx=0)
 Nt_para.pop(0)
-Nt_traindata = compute_data.col_values(colx=1)
+Nt_traindata = sheet.col_values(colx=1)
 Nt_traindata.pop(0)
-Pt_theo = compute_data.col_values(colx=2)
+Pt_theo = sheet.col_values(colx=2)
 Pt_theo.pop(0)
-Pi_theo = compute_data.col_values(colx=3)
+Pi_theo = sheet.col_values(colx=3)
 Pi_theo.pop(0)
-Ni_user = compute_data.col_values(colx=4)
+Ni_user = sheet.col_values(colx=4)
 Ni_user.pop(0)
+Eff_t = sheet.col_values(colx=5)
+Eff_t.pop(0)
+Eff_i = sheet.col_values(colx=6)
+Eff_i.pop(0)
+Sp_rate = sheet.col_values(colx=7)
+Sp_rate.pop(0)
 
 config_data = excel.sheet_by_index(0)
 random_batch = int(config_data.cell(0,1).value)
@@ -51,11 +55,11 @@ def calc_sigma_002(n):  #Calculate 1-sigma with ±2%'s deviation
 def calc_sigma_005(n):  #Calculate 1-sigma with ±5%'s deviation
     return n*0.05
 
-def calc_Rt(nt_para,nt_traindata,nt_model):
-    return nt_para*nt_traindata*nt_model*125/1800/day
+def calc_Rt(nt_para,nt_traindata,nt_model,sp_rate):
+    return nt_para*nt_traindata*nt_model*125/2160/day/sp_rate
 
-def calc_Ri(nt_para,ni_user,ni_query_amount):
-    return nt_para*ni_user*ni_query_amount/43200
+def calc_Ri(nt_para,ni_user,ni_query_amount,sp_rate):
+    return nt_para*ni_user*ni_query_amount/43200/sp_rate
 
 l = l_range
 for r in range(random_batch):
@@ -65,8 +69,12 @@ for r in range(random_batch):
         S2_i = np.zeros(T)
         
         nt_model = round(randomize(n_model,1),0)  
-        eff_t = randomize(0.3,0.005)  #Computing efficiency for training
-        eff_i = randomize(0.46,0.01)  #Computing efficiency for inference
+        eff_t = [randomize(x,0.005) for x in Eff_t]  #Computing efficiency for training
+        eff_i = [randomize(x,0.01) for x in Eff_i]  #Computing efficiency for inference
+        if Sp_rate[0] == 1:
+            sp_rate = [x for x in Sp_rate]
+        else:
+            sp_rate = [randomize(x,0.25) for x in Sp_rate]  #Sparsity rate of model
         ni_query_amount = randomize(10000,500)  #Token requirements per capital per day
         nt_para = list(smap(randomize, zip(Nt_para, list(map(calc_sigma_002,Nt_para)))))
         nt_traindata = list(smap(randomize, zip(Nt_traindata, list(map(calc_sigma_002,Nt_traindata)))))
@@ -74,13 +82,12 @@ for r in range(random_batch):
         pt_theo = list(smap(randomize, zip(Pt_theo, list(map(calc_sigma_002,Pt_theo)))))
         pi_theo = list(smap(randomize, zip(Pi_theo, list(map(calc_sigma_002,Pi_theo)))))
         
-        
-        R_t = list(smap(calc_Rt,zip(nt_para,nt_traindata,[nt_model]*T)))
-        R_i = list(smap(calc_Ri,zip(nt_para,ni_user,[ni_query_amount]*T)))
+        R_t = list(smap(calc_Rt,zip(nt_para,nt_traindata,[nt_model]*T,sp_rate)))
+        R_i = list(smap(calc_Ri,zip(nt_para,ni_user,[ni_query_amount]*T,sp_rate)))
         R_t.insert(0,0)
         R_i.insert(0,0)
-        P_t = [e*eff_t*GPU_per_server for e in pt_theo]
-        P_i = [e*eff_i*GPU_per_server for e in pi_theo]
+        P_t = [x*eff_t[i]*GPU_per_server for i,x in enumerate(pt_theo)]
+        P_i = [x*eff_i[i]*GPU_per_server for i,x in enumerate(pi_theo)]
         
         
         for i in range(T):
@@ -115,12 +122,8 @@ for r in range(random_batch):
         C1_total[r] = C1
         C2_total[r] = C2
 
-#Choose Stepwise Upgrade Strategy result or Continuous Upgrading Strategy result
-if upgrade_strategy == 1:
-	S_final = S1_total
-elif upgrade_strategy == 2:
-	S_final = S2_total
-	
+S_final = S1_total  #This is used to choose Stepwise Upgrade Strategy result or Continuous Upgrading Strategy result
+
 Exp = pd.DataFrame()
 
 #Calculate mean value and standard deviation
