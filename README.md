@@ -1,4 +1,4 @@
-![image](https://github.com/Johnly233/E-waste-Challenges-of-Generative-Artificial-Intelligence/assets/162321855/7c8ade5e-ad1f-4b00-8957-f8bfa204631c)# E-waste-Challenges-of-Generative-Artificial-Intelligence
+# E-waste-Challenges-of-Generative-Artificial-Intelligence
 This is the program to realize global server E-waste prediction algorithm presented in paper 'E-waste Challenges of Generative Artificial Intelligence' The functionality of this program is to calucalte (predict) the number of servers with given training/inference scale parameters in the configurated period. The result contains mean value, standard deviation and cumulative standard deviation from the starting time frame.
 
 1.System requirements
